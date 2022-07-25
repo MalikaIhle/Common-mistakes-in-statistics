@@ -42,6 +42,8 @@ sample2
 dataset <- rbind(sample1, sample2)
 dataset
 
+boxplot(dataset$Height ~ dataset$Group) ### plot with all data points, mean, visualize noise
+
 ### Test whether the average height in each group is significantly different
 model1 <- lm(Height ~ Group, data = dataset)
 summary(model1)
@@ -52,7 +54,7 @@ dataset10 <- rbind(dataset, dataset, dataset, dataset, dataset, dataset, dataset
 
 ### Test whether the average height in each group - with the exact same data replicated 10 times - is significantly different
 model2 <- lm(Height ~ Group, data = dataset10)
-summary(model2) # the result appear significant!
+summary(model2) # the result appears significant!
 
 
 
@@ -67,7 +69,7 @@ View(dataset10)
 model3 <- lm(HeightWithSmallNoise ~ Group, data = dataset10)
 summary(model3) # pseudoreplicated model
 
-### Correct model -> nest value within individuals (= add IndID as a random effet (intercept) in a mixed-effect model)
+### Correct model -> nest value within individuals (= add IndID as a random effect (intercept) in a mixed-effect model)
 model4 <- lmer(HeightWithSmallNoise ~ Group + (1|IndID), data = dataset10)
 summary(model4) # correct p-value, the IndID explains all the variance
 
@@ -76,7 +78,7 @@ summary(model4) # correct p-value, the IndID explains all the variance
 ## C. Even more realistic: the measure has a low repeatability (e.g. behavioural measure instead of physical trait) -----
 
 ### create two samples (group A and B) of 10 bird aggressiveness measurements drawn from a normal distribution of mean 20 and sd 3
-set.seed(20220721)
+set.seed(20220725)
 
 sample3 <- data.frame(
   Group = rep("A", 10),
@@ -95,8 +97,9 @@ sample4
 dataset_Aggr <- rbind(sample3, sample4)
 dataset_Aggr
 
+## add some plot
 
-### Test whether the average height in each group is significantly different
+### Test whether the average aggressiveness in each group is significantly different
 model1_Aggr <- lm(Aggressiveness ~ Group, data = dataset_Aggr)
 summary(model1_Aggr)
 
@@ -104,7 +107,7 @@ summary(model1_Aggr)
 dataset_Aggr10 <- rbind(dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr)
 #### proper way to write this: dataset_Aggr10 <- do.call("rbind", replicate(10, dataset_Aggr, simplify = FALSE))
 
-### Test whether the average height in each group, with the exact same data replicated 10 times, is significantly different
+### Test whether the average aggressiveness in each group, with the exact same data replicated 10 times, is significantly different
 model2_Aggr <- lm(Aggressiveness ~ Group, data = dataset_Aggr10)
 summary(model2_Aggr) # the result is significant
 
@@ -113,13 +116,13 @@ dataset_Aggr10$LargeNoise <- rnorm(200, 0, 6)
 dataset_Aggr10$AggressivenessWithLargeNoise <- dataset_Aggr10$Aggressiveness + dataset_Aggr10$LargeNoise
 View(dataset_Aggr10)
 
-### Test whether the average height in each group, with the same data replicated 10 times with small noise, is significantly different
+### Test whether the average aggressiveness in each group, with the same data replicated 10 times with large noise, is significantly different
 model3_Aggr <- lm(AggressivenessWithLargeNoise ~ Group, data = dataset_Aggr10)
 summary(model3_Aggr) # pseudoreplicated model
 
-### Correct model -> nest value within individuals (= add IndID as a random effet (intercept) in a mixed-effect model)
+### Correct model -> nest value within individuals (= add IndID as a random effect (intercept) in a mixed-effect model)
 model4_Aggr <- lmer(AggressivenessWithLargeNoise ~ Group + (1|IndID), data = dataset_Aggr10)
-summary(model4_Aggr) # correct p-value, the IndID explains all the variance
+summary(model4_Aggr) # correct p-value, the IndID explains little of the variance -> hardly any pseudoreplication
 
 
 
@@ -135,7 +138,7 @@ View(d45)
 d45$Female_ID <-as.factor(d45$Female_ID)
 d45$Trt <- as.factor(d45$Trt)
 
-### plot of the mass of each of the ~5 eggs of each female 
+### plot of the mass of each of the 5 eggs of each female 
 ggplot(data=d45, aes(x=Female_ID, y=Egg_mass, group=Trt, colour=Trt))  +
   geom_point(size=2)+
   labs(x="Female ID", y="Egg mass")+
@@ -236,23 +239,8 @@ ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt)
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
 
 
-### Plots with raw data, 1 color per Trt, average slope per Trt and SE
-ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = c(Trt), colour = c(Trt)))  +
-  geom_point(size=2)+
-  geom_smooth(method='lm') +
-  xlab("Laying order")+ ylab("Egg mass")+
-  theme_classic() +
-  theme(panel.border = element_blank(),
-        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")) +
-  theme(axis.title = element_text (face="bold",size=13)) + 
-  theme(axis.text = element_text (size=10)) +
-  scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
-
-
-
 ### Compare the slopes of the females between treatment groups
-#### warning: not something to actually do as you loose variance from the raw data (each individual egg value)
+#### warning: not something to actually do as you lose variance from the raw data (each individual egg value)
 #### create a dataset with 1 row per female, with their appropriate treatment
 
 d45_F <- unique(d45[,c('Female_ID', 'Trt')]) # one line per female 
@@ -354,7 +342,7 @@ summary(mod_latency1)
 
 
 # transform latency to approximate a Gaussian distribution
-mod_latency2 <- glm (log(Latency) ~ Exploration_score, data = d8, family = "gaussian")
+mod_latency2 <- glm (log(Latency) ~ Exploration_score, data = d8, family = "gaussian") # log in R = Ln
 summary(mod_latency2)
 
 # BTW, this is equal to:
@@ -367,13 +355,13 @@ mod_latency3 <- glm (Latency ~ Exploration_score, data = d8, family = "quasipois
 summary(mod_latency3)
 
 
-# correct: add an overdispersion parameter (observation-level random effect) to a poisson model
+# also correct: add an overdispersion parameter (observation-level random effect) to a poisson model
 
-d8$IndID <- 1:nrow(d8)
+d8$ObsvID <- 1:nrow(d8)
 head(d8)
 tail(d8)
 
-mod_latency4 <- glmer (Latency ~ Exploration_score + (1|IndID), data = d8, family = "poisson")
+mod_latency4 <- glmer (Latency ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
 
 
