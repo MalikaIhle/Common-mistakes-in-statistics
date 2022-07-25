@@ -3,17 +3,19 @@
 
 # 0. Set-up -----
 
-##### install.packages("lme4")
-##### install.packages("lmerTest")
-##### install.packages("ggplot2")
-##### install.packages("pedigreemm")
+##### install.packages(c("lme4", "lmerTest", "ggplot2","pedigreemm", "data.table", "magrittr" ))
+
 library(lme4)
 library(lmerTest)
 library(ggplot2)
 library(pedigreemm)
+library(data.table)
+library(magrittr)
+#source()
 
 
 # 1. Multiple Testing -----
+
 
 
 
@@ -130,7 +132,6 @@ summary(model4_Aggr) # correct p-value, the IndID explains little of the varianc
 
 ### i. Random intercept: Feeding treatment effect on egg mass  -----
 
-##### d45 <- read.table("C://C//R_files//dataFig45.txt", sep='\t', header=T)
 d45 <- read.table("dataFig45.txt", sep='\t', header=T)
 View(d45)
 
@@ -286,7 +287,6 @@ summary(mod_egg4) # non-significant interaction, equivalent to the t test (lm) a
 
 ## E. Genetic relatedness -----
 
-##### d7 <- read.table("C://C//R_files//dataFig7.txt", sep='\t', header=T)
 d7 <- read.table("dataFig7.txt", sep='\t', header=T)
 head(d7)
 tail(d7)
@@ -304,16 +304,44 @@ ggplot(d7, aes(x=ESR_10, y=Courtship_rate)) +
   scale_x_continuous(breaks=c(0,1,2), labels=c("0\n\n", "1\nheterozygous", "2\nhomozygous")) 
 
 
-# incorrect model
+### incorrect model
 mod_song1 <- glm (Courtship_rate ~ ESR_10, data = d7)
 summary(mod_song1)
 
-# deceptive model
-####mod_song2 <-	lmer (Courtship_rate ~ ESR_10 + (1|family_ID))
-####summary(mod_song2)
+### deceptive model
+mod_song2 <-	lmer (Courtship_rate ~ ESR_10 + (1|Family_ID), data = d7)
+summary(mod_song2)
 
-# correct model
-####mod_song3 <-pedigreemm (Courtship_rate ~ ESR_10 + (1|animal))
+### correct model : include pedigree
+#### get pedigrees
+ped <- read.table("data_ped3404_Seewiesen.txt", header=TRUE, sep="\t", na.strings="NA") 
+
+#### get phenotypes
+phenos <- read.table("dataFig7.txt", header=TRUE, sep="\t")
+
+#### prepare data 
+##### calculate FPed via pedigreemm
+ped_mm <- pedigree(sire = as.character(ped$MID), dam  = as.character(ped$FID), label = as.character(ped$Animal))
+FPed <- inbreeding(ped_mm)
+ped$FPed <- FPed
+all.data <- merge(phenos, ped, by.x="Animal", by.y="Animal")
+
+##### some basic formatting
+all.data$Animal <- factor(all.data$Animal)
+
+
+##### model
+
+mod_song3 = pedigreemm(Courtship_rate ~ ESR_10 + (1|Animal), pedigree=list(Animal=ped_mm)
+                       , data=all.data, verbose=TRUE, na.action=na.exclude
+                       , control=lmerControl(check.nobs.vs.nlev="ignore"
+                       , check.nobs.vs.nRE="ignore", check.nobs.vs.rankZ = "ignore"))
+summary(mod_song3)
+varcorsmod = c(VarCorr(mod_song3)$Animal, attr(VarCorr(mod_song3), "sc")^2)
+h2.mod = varcorsmod/sum(varcorsmod)
+h2.mod
+
+
 
 
 
@@ -336,9 +364,17 @@ ggplot(data=d8, aes(x=Exploration_score, y=Latency))  +
   theme(axis.text = element_text (size=10)) 
 
 
-# consider number of seconds as a count of seconds, i.e. a Poisson distribution
+# consider number of minutes as a count of minutes, i.e. a Poisson distribution
 mod_latency1 <- glm (Latency ~ Exploration_score, data = d8, family = "poisson")
 summary(mod_latency1)
+
+## same model in seconds!
+d8$Latency_seconds <- d8$Latency * 60
+head(d8)
+tail(d8)
+
+mod_latency1sec <- glm (Latency_seconds ~ Exploration_score, data = d8, family = "poisson")
+summary(mod_latency1sec)
 
 
 # transform latency to approximate a Gaussian distribution
@@ -363,7 +399,6 @@ tail(d8)
 
 mod_latency4 <- glmer (Latency ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
-
 
 
 
