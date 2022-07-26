@@ -17,7 +17,12 @@ library(magrittr)
 # 1. Multiple Testing -----
 
 
-
+## Lesson 1: Automatic model simplification comes with a considerable burden of multiple testing
+## especially if the initial full model was overfitted (N<3k, k = number of parameters)
+## Minimal models often look convincing, but the problematic history of getting there is often forgotten
+## Exploratory testing for interaction terms is generally discouraged 
+## Realistically, interaction require 16x more data than main effects
+## If N<8k, often better to test each predictor singly 
 
 # 2. Pseudoreplication -----
 
@@ -46,19 +51,22 @@ dataset
 
 boxplot(dataset$Height ~ dataset$Group) ### plot with all data points, mean, visualize noise
 
-### Test whether the average height in each group is significantly different
+### Test whether the average height differs significantly between groups A and B
 model1 <- lm(Height ~ Group, data = dataset)
-summary(model1)
+summary(model1) # the difference is clearly non-significant (p=0.357)
 
 ### copy the data 10 times (i.e. exact replicates)
 dataset10 <- rbind(dataset, dataset, dataset, dataset, dataset, dataset, dataset, dataset, dataset, dataset)
 #### proper way to write this: data10 <- do.call("rbind", replicate(10, dataset, simplify = FALSE))
 
-### Test whether the average height in each group - with the exact same data replicated 10 times - is significantly different
+### Test whether the average height is now different between the groups
+### with each individual measured 10 times (identical values!)
 model2 <- lm(Height ~ Group, data = dataset10)
-summary(model2) # the result appears significant!
+summary(model2) # the difference appears highly significant (p=0.002)
 
-
+## Lesson 2: With pseudoreplication, p-values become incorrect
+## (assumption of independence of data points is being violated)
+## SEs (and CIs) are too small, confidence in the difference is too high
 
 ## B. A more realistic situation: there is a small measurement error (i.e. replicates are not exact) -----
 
@@ -67,67 +75,19 @@ dataset10$SmallNoise <- rnorm(200, 0, 0.5)
 dataset10$HeightWithSmallNoise <- dataset10$Height + dataset10$SmallNoise
 View(dataset10)
 
-### Test whether the average height in each group, with the same data replicated 10 times with small noise, is significantly different
+### Test whether the average height differs between the groups, with the same data replicated 10 times with small noise
 model3 <- lm(HeightWithSmallNoise ~ Group, data = dataset10)
-summary(model3) # pseudoreplicated model
+summary(model3) # the difference again appears highly significant (p=0.002); practically identical to model2
 
 ### Correct model -> nest value within individuals (= add IndID as a random effect (intercept) in a mixed-effect model)
 model4 <- lmer(HeightWithSmallNoise ~ Group + (1|IndID), data = dataset10)
-summary(model4) # correct p-value, the IndID explains all the variance
+summary(model4) # correct p-value, the IndID explains most of the variance
+
+## Lesson 3: Fitting individual ID as a random intercept takes care of the repeated measurements per individual
+## and restores the p-value we had before (p=0.357)
 
 
-## C. Even more realistic: the measure has a low repeatability (e.g. behavioural measure instead of physical trait) -----
-
-### create two samples (group A and B) of 10 bird aggressiveness measurements drawn from a normal distribution of mean 20 and sd 3
-set.seed(20220725)
-
-sample3 <- data.frame(
-  Group = rep("A", 10),
-  IndID = 1:10,
-  Aggressiveness = rnorm(n = 10, mean = 20, sd = 5))
-
-sample3
-
-sample4 <- data.frame(
-  Group = rep("B", 10),
-  IndID = 11:20,
-  Aggressiveness = rnorm(n = 10, mean = 20, sd = 5))
-
-sample4 
-
-dataset_Aggr <- rbind(sample3, sample4)
-dataset_Aggr
-
-## add some plot
-
-### Test whether the average aggressiveness in each group is significantly different
-model1_Aggr <- lm(Aggressiveness ~ Group, data = dataset_Aggr)
-summary(model1_Aggr)
-
-### copy the data 10 times (i.e. exact replicates)
-dataset_Aggr10 <- rbind(dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr, dataset_Aggr)
-#### proper way to write this: dataset_Aggr10 <- do.call("rbind", replicate(10, dataset_Aggr, simplify = FALSE))
-
-### Test whether the average aggressiveness in each group, with the exact same data replicated 10 times, is significantly different
-model2_Aggr <- lm(Aggressiveness ~ Group, data = dataset_Aggr10)
-summary(model2_Aggr) # the result is significant
-
-### create a large normally distributed measurement error
-dataset_Aggr10$LargeNoise <- rnorm(200, 0, 4)
-dataset_Aggr10$AggressivenessWithLargeNoise <- dataset_Aggr10$Aggressiveness + dataset_Aggr10$LargeNoise
-View(dataset_Aggr10)
-
-### Test whether the average aggressiveness in each group, with the same data replicated 10 times with large noise, is significantly different
-model3_Aggr <- lm(AggressivenessWithLargeNoise ~ Group, data = dataset_Aggr10)
-summary(model3_Aggr) # pseudoreplicated model
-
-### Correct model -> nest value within individuals (= add IndID as a random effect (intercept) in a mixed-effect model)
-model4_Aggr <- lmer(AggressivenessWithLargeNoise ~ Group + (1|IndID), data = dataset_Aggr10)
-summary(model4_Aggr) # correct p-value, the IndID explains little of the variance -> hardly any pseudoreplication
-
-
-
-## D. A real example: Egg Mass -----
+## C. A real example: Egg Mass -----
 
 ### i. Random intercept: Feeding treatment effect on egg mass  -----
 
@@ -237,10 +197,15 @@ summary(mod_egg3) # significant interaction (i.e. effect of trt on slope 'egg ma
 mod_egg4 <- lmer(Egg_mass ~ Trt*Laying_order + (Laying_order|Female_ID), data = d45)
 summary(mod_egg4) # non-significant interaction, equivalent to the t test (lm) above
 
+## Lesson 4: Sometimes pseudoreplication lies in slopes rather than intercepts
+## i.e. individuals differ not in their mean value of the dependent variable (y)
+## but rather in how the dependent variable (y) changes in response to another variable (X)
+## This variable x may be continuous or just consist of two classes (treatment A vs B)
+## A random slope model accounts for the fact that individuals differ in their response to x
+## and this may be necessary as soon as you have 3 or more values per individual
 
 
-
-## E. Genetic relatedness -----
+## D. Genetic relatedness -----
 
 d7 <- read.table("dataFig7.txt", sep='\t', header=T)
 head(d7)
@@ -296,9 +261,11 @@ varcorsmod = c(VarCorr(mod_song3)$Animal, attr(VarCorr(mod_song3), "sc")^2)
 h2.mod = varcorsmod/sum(varcorsmod)
 h2.mod
 
-
-
-
+## Lesson 5: Non-independence of data points may sometimes be hard to account for completely
+## Besides relatedness of individuals (causing non-independence in heritable traits)
+## there is often spatial or temporal autocorrelation in the data
+## All these dependencies can be modeled, but this is challenging and rarely done perfectly
+## Hence p-values often remain anti-conservative, and this explains in part the difficulties in replicating findings
 
 
 # 3. Dealing with non-Gaussian data -----
@@ -355,7 +322,10 @@ tail(d8)
 mod_latency4 <- glmer (Latency_min ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
 
-
+## Lesson 6: The use of non-Gaussian models (especially Poisson models) should always ring an alarm bell!
+## Has the author accounted for overdispersion?
+## Does a Gaussian model (fail safe and equally powerful) yield the same conclusion?
+## If not, better don't trust the Poisson model!
 
 
 
