@@ -76,7 +76,6 @@ model4 <- lmer(HeightWithSmallNoise ~ Group + (1|IndID), data = dataset10)
 summary(model4) # correct p-value, the IndID explains all the variance
 
 
-
 ## C. Even more realistic: the measure has a low repeatability (e.g. behavioural measure instead of physical trait) -----
 
 ### create two samples (group A and B) of 10 bird aggressiveness measurements drawn from a normal distribution of mean 20 and sd 3
@@ -85,14 +84,14 @@ set.seed(20220725)
 sample3 <- data.frame(
   Group = rep("A", 10),
   IndID = 1:10,
-  Aggressiveness = rnorm(n = 10, mean = 20, sd = 3))
+  Aggressiveness = rnorm(n = 10, mean = 20, sd = 5))
 
 sample3
 
 sample4 <- data.frame(
   Group = rep("B", 10),
   IndID = 11:20,
-  Aggressiveness = rnorm(n = 10, mean = 20, sd = 3))
+  Aggressiveness = rnorm(n = 10, mean = 20, sd = 6))
 
 sample4 
 
@@ -114,7 +113,7 @@ model2_Aggr <- lm(Aggressiveness ~ Group, data = dataset_Aggr10)
 summary(model2_Aggr) # the result is significant
 
 ### create a large normally distributed measurement error
-dataset_Aggr10$LargeNoise <- rnorm(200, 0, 6)
+dataset_Aggr10$LargeNoise <- rnorm(200, 0, 4)
 dataset_Aggr10$AggressivenessWithLargeNoise <- dataset_Aggr10$Aggressiveness + dataset_Aggr10$LargeNoise
 View(dataset_Aggr10)
 
@@ -163,58 +162,10 @@ summary(mod_egg2)
 
 ### ii. Random slopes: Laying order effect on egg mass ------
 
-### Plots with raw data, 1 color per Female
-ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Female_ID, colour = Female_ID))  +
-  geom_point(size=2)+
-  xlab("Laying order")+ ylab("Egg mass")+
-  theme_classic() +
-  theme(panel.border = element_blank(),
-        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")) +
-  theme(axis.title = element_text (face="bold",size=13)) + 
-  theme(axis.text = element_text (size=10)) +
-  scale_colour_manual(values = c("1" = "deepskyblue",
-                                 "2" = "dodgerblue", 
-                                 "3" = "blue", 
-                                 "4" = "blue4", 
-                                 "5" = "darkslateblue", 
-                                 "6" = "steelblue", 
-                                 "7" = "orange", 
-                                 "8" = "darkorange", 
-                                 "9" = "darkorange1", 
-                                 "10" = "darkorange2", 
-                                 "11" = "darkorange3", 
-                                 "12" = "darkorange4"), name="Female_ID")
-
-
-### Plots with raw data, 1 color per Female, 1 slope per female
-ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Female_ID, colour = Female_ID))  +
-  geom_point(size=2)+
-  geom_smooth(aes(group = Female_ID), method = "lm", se = FALSE) +
-  xlab("Laying order")+ ylab("Egg mass")+
-  theme_classic() +
-  theme(panel.border = element_blank(),
-        axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-        axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")) +
-  theme(axis.title = element_text (face="bold",size=13)) + 
-  theme(axis.text = element_text (size=10)) +
-  scale_colour_manual(values = c("1" = "deepskyblue",
-                                 "2" = "dodgerblue", 
-                                 "3" = "blue", 
-                                 "4" = "blue4", 
-                                 "5" = "darkslateblue", 
-                                 "6" = "steelblue", 
-                                 "7" = "orange", 
-                                 "8" = "darkorange", 
-                                 "9" = "darkorange1", 
-                                 "10" = "darkorange2", 
-                                 "11" = "darkorange3", 
-                                 "12" = "darkorange4"), name="Female_ID")
-
-### Plots with raw data, 1 color per Trt, 1 slope per female
+### Plots with raw data, 1 color per Trt, 1 slope per female + 1 large average slope per Trt
 ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt))  +
   geom_point(size=2)+
-  geom_smooth(aes(group = Female_ID), method = "lm", se = FALSE) +
+  geom_smooth(size = 2, method='lm', se = FALSE) +
   xlab("Laying order")+ ylab("Egg mass")+
   theme_classic() +
   theme(panel.border = element_blank(),
@@ -224,12 +175,16 @@ ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt)
   theme(axis.text = element_text (size=10)) +
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
 
+### Model on raw data (1 line per egg) with random intercept only
+mod_egg3 <- lmer(Egg_mass ~ Trt*Laying_order + (1|Female_ID), data = d45)
+summary(mod_egg3) # significant interaction (i.e. effect of trt on slope 'egg mass over laying order' significant)
+
 
 ### Plots with raw data, 1 color per Trt, 1 slope per female + 1 large average slope per Trt
 ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt))  +
   geom_point(size=2)+
   geom_smooth(aes(group = Female_ID), method = "lm", se = FALSE) +
-  geom_smooth(size = 5, method='lm', se = FALSE) +
+  geom_smooth(size = 3, method='lm', se = FALSE) +
   xlab("Laying order")+ ylab("Egg mass")+
   theme_classic() +
   theme(panel.border = element_blank(),
