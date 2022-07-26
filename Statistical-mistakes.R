@@ -91,7 +91,7 @@ sample3
 sample4 <- data.frame(
   Group = rep("B", 10),
   IndID = 11:20,
-  Aggressiveness = rnorm(n = 10, mean = 20, sd = 6))
+  Aggressiveness = rnorm(n = 10, mean = 20, sd = 5))
 
 sample4 
 
@@ -307,7 +307,7 @@ h2.mod
 d8 <- read.table("dataFig8.txt", sep='\t', header=T)
 head(d8)
 
-ggplot(data=d8, aes(x=Exploration_score, y=Latency))  +
+ggplot(data=d8, aes(x=Exploration_score, y=Latency_min))  +
   geom_point(size=2, col="dodgerblue4")+xlim(c(-1.65,1.73))+ ylim(0,600)+scale_x_continuous(breaks=seq(-1.5,1.5, 0.5))+
   geom_smooth(method='lm', color='red')+
   xlab("Exploration score")+ ylab("Latency to return (min)")+
@@ -320,11 +320,11 @@ ggplot(data=d8, aes(x=Exploration_score, y=Latency))  +
 
 
 # consider number of minutes as a count of minutes, i.e. a Poisson distribution
-mod_latency1 <- glm (Latency ~ Exploration_score, data = d8, family = "poisson")
+mod_latency1 <- glm (Latency_min ~ Exploration_score, data = d8, family = "poisson")
 summary(mod_latency1)
 
 ## same model in seconds!
-d8$Latency_seconds <- d8$Latency * 60
+d8$Latency_seconds <- d8$Latency_min * 60
 head(d8)
 tail(d8)
 
@@ -333,16 +333,16 @@ summary(mod_latency1sec)
 
 
 # transform latency to approximate a Gaussian distribution
-mod_latency2 <- glm (log(Latency) ~ Exploration_score, data = d8, family = "gaussian") # log in R = Ln
+mod_latency2 <- glm (log(Latency_min) ~ Exploration_score, data = d8, family = "gaussian") # log in R = Ln
 summary(mod_latency2)
 
 # BTW, this is equal to:
-mod_latency2bis <- lm (log(Latency) ~ Exploration_score, data = d8)
+mod_latency2bis <- lm (log(Latency_min) ~ Exploration_score, data = d8)
 summary(mod_latency2bis)
 
 
 # correct: use a quasi poisson distribution
-mod_latency3 <- glm (Latency ~ Exploration_score, data = d8, family = "quasipoisson")
+mod_latency3 <- glm (Latency_min ~ Exploration_score, data = d8, family = "quasipoisson")
 summary(mod_latency3)
 
 
@@ -352,7 +352,7 @@ d8$ObsvID <- 1:nrow(d8)
 head(d8)
 tail(d8)
 
-mod_latency4 <- glmer (Latency ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
+mod_latency4 <- glmer (Latency_min ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
 
 

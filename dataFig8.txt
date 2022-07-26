@@ -1,4 +1,4 @@
-Exploration_score	Latency
+Exploration_score	Latency_min
 -1	4
 1.025851538	9
 1.074311743	10
