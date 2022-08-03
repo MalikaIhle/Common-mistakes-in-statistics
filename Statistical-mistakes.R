@@ -1,5 +1,7 @@
 # Common Mistakes in Statistics
 
+## General Introduction ----
+## Statistical testing 
 
 # 0. Set-up -----
 
@@ -16,13 +18,42 @@ library(magrittr)
 
 # 1. Multiple Testing -----
 
+# Let us assume we have 30 observations and 6 predictors (this can be changed here to play)
+N_OBS = 30
+N_MAIN_EFFECTS = 6
 
-## Lesson 1: Automatic model simplification comes with a considerable burden of multiple testing
+# First we set a seed to make randomly generated data reproducible
+set.seed(7)
+
+# Now we randomly generate a data.table with N_OBS rows and N_MAIN_EFFECTS +1 columns, all values are from a normal distribution
+mydata = matrix( data = rnorm( (N_OBS *(N_MAIN_EFFECTS + 1)) ), 
+                 nrow = N_OBS, ncol = (N_MAIN_EFFECTS + 1) ) %>% data.table
+# The first column is the dependent variable Y, the remaining columns are the predictors A, B, C...
+colnames (mydata) = c("Y", LETTERS[1:N_MAIN_EFFECTS])
+mydata
+
+# Now we fit a full model that tries to explain Y by the 6 main effects (A-F) and the 15 (two-way) interactions
+# and the we automatically simplify this by always removing the least significant term until we get a minimal model
+
+source("Fun_Model_Simplifier.R")
+Model_Simplifier()
+
+
+# Let's try this again with different seeds------
+
+Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 8)
+Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 9)
+Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 10)
+Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 11)
+Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
+
+## Lesson 1: Automatic model simplification comes with a considerable burden of multiple testing ------
 ## especially if the initial full model was overfitted (N<3k, k = number of parameters)
 ## Minimal models often look convincing, but the problematic history of getting there is often forgotten
 ## Exploratory testing for interaction terms is generally discouraged 
 ## Realistically, interaction require 16x more data than main effects
 ## If N<8k, often better to test each predictor singly 
+
 
 # 2. Pseudoreplication -----
 

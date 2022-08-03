@@ -49,7 +49,7 @@ extract_Pval = function ( lm) {
 
 set.seed(7)
 # 1 randomly generate data -------
-  ## randomly generate a data.table with N_MAIN_EFFECTS rows and N_OBS columns, all values are from normal distribution
+  ## randomly generate a data.table with N_OBS rows and N_MAIN_EFFECTS +1 columns, all values are from a normal distribution
   mydata = matrix( data = rnorm( (N_OBS *(N_MAIN_EFFECTS + 1)) ), 
                    nrow = N_OBS, ncol = (N_MAIN_EFFECTS + 1) ) %>% data.table
   ## col names of Y, A, B, C...
