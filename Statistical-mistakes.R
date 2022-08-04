@@ -1,11 +1,31 @@
 # Common Mistakes in Statistics
 
-## General Introduction ----
-## Statistical testing 
+# General Introduction ----
+#~ Statistical testing is used to distinguish "significant" patterns from
+#~ random noise. P-values are supposed to tell us how often a pattern of a
+#~ certain strength or magnitude (i.e. effect size) arises by chance alone.
+#~ However, in practice, there are many mistakes that one can make during data
+#~ analysis, and many of them will result in anti-conservative p-values. This
+#~ means that we often believe that we have discovered a real effect, 
+#~ but in fact this was just a matter of chance (i.e. we got a false-positive 
+#~ finding). According to my experience, anti-conservative p-values (i.e. 
+#~ confidence intervals of effect sizes that are too narrow) are a major reason
+#~ why many research findings cannot be replicated between studies (i.e. meta 
+#~ analyses show high levels of heterogeneity in effect sizes between studies).
+#~ Here we will work through the most common and most serious mistakes. If you 
+#~ learn to avoid these mistakes, you will less often be fooled by the data, and
+#~ will less often waste your time on follow-up studies of phenomena that do not
+#~ exist. If you also learn to recognize these mistakes in published studies,
+#~ you will also less often get misled by the mistakes of others. More details
+#~ can be found here (Forstmeier et al. 2016).
 
 # 0. Set-up -----
 
-##### install.packages(c("lme4", "lmerTest", "ggplot2","pedigreemm", "data.table", "magrittr" ))
+#~ Before we can start, we need to install and load some R packages
+#~ If the packages are not intstalled yet, use the 'install.packages'-line by
+#~ removing the # in front of it, and then run the line (Run button in RStudio)
+
+# install.packages(c("lme4", "lmerTest", "ggplot2","pedigreemm", "data.table", "magrittr" ))
 
 library(lme4)
 library(lmerTest)
@@ -13,33 +33,64 @@ library(ggplot2)
 library(pedigreemm)
 library(data.table)
 library(magrittr)
-#source()
 
 
-# 1. Multiple Testing -----
+# 1. The issue of multiple testing -----
 
-# Let us assume we have 30 observations and 6 predictors (this can be changed here to play)
+#~ Introduction to multiple testing ----
+
+#~ Multiple hypothesis testing (and failing to realize that one did numerous
+#~ tests before finding something significant) is a major source of false-
+#~ positive findings. If you conduct 20 tests, one of them should be significant
+#~ at p<0.05 anyway. Hence, it is essential to keep track of how many tests were
+#~ conducted, which includes many variants of "giving the data a second chance",
+#~ such as adding more data, adding covariates, categorizing variables, 
+#~ transforming variables, removing outliers, removing a treatment category etc.
+#~ Such "playing with data until reaching significance" is known as p-hacking, 
+#~ and this is so well known (and frowned upon) that we do not need to cover
+#~ this here. 
+#~ Yet what is sometimes overlooked, is what we called "cryptic multiple
+#~ hypothesis testing" during model selection (Forstmeier & Schielzeth 2011). 
+#~ Below, you will experience a drastic example, which works so well because the 
+#~ initial full model is massively over-fitted (i.e. too many predictors for 
+#~ just a few data points). Such over-fitting can be considered a statistical
+#~ crime. Yet, it may be "the perfect crime" that leaves no traces, if you do not
+#~ honestly report how you arrived at your minimal model. Often people have just
+#~ presented the minimal model and have claimed that these results confirm their
+#~ initial hypotheses.
+
+#~ Simulations of model selection ----
+
+#~ Let us assume we have 30 observations and 6 predictors
+
 N_OBS = 30
 N_MAIN_EFFECTS = 6
 
-# First we set a seed to make randomly generated data reproducible
+# First, we set a seed to make randomly generated data reproducible
+
 set.seed(7)
 
-# Now we randomly generate a data.table with N_OBS rows and N_MAIN_EFFECTS +1 columns, all values are from a normal distribution
+#~ Now we randomly generate a data.table with N_OBS rows and N_MAIN_EFFECTS + 1
+#~ columns. All values are from a normal distribution.
+
 mydata = matrix( data = rnorm( (N_OBS *(N_MAIN_EFFECTS + 1)) ), 
                  nrow = N_OBS, ncol = (N_MAIN_EFFECTS + 1) ) %>% data.table
-# The first column is the dependent variable Y, the remaining columns are the predictors A, B, C...
+
+#~ The first column is the dependent variable Y, the remaining columns are the 
+#~ predictors A, B, C...
+
 colnames (mydata) = c("Y", LETTERS[1:N_MAIN_EFFECTS])
 mydata
 
-# Now we fit a full model that tries to explain Y by the 6 main effects (A-F) and the 15 (two-way) interactions
-# and the we automatically simplify this by always removing the least significant term until we get a minimal model
+#~ Now we fit a full model that tries to explain Y by the 6 main effects (A-F)
+#~ and by the 15 (two-way) interactions.
+#~ This "full model" we then automatically simplify by always removing the least
+#~ significant term until we get a "minimal model"
 
 source("Fun_Model_Simplifier.R")
 Model_Simplifier()
 
-
-# Let's try this again with different seeds------
+# Let's try this again with different seeds
 
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 8)
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 9)
@@ -47,20 +98,35 @@ Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 10)
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 11)
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
 
-## Lesson 1: Automatic model simplification comes with a considerable burden of multiple testing ------
-## especially if the initial full model was overfitted (N<3k, k = number of parameters)
-## Minimal models often look convincing, but the problematic history of getting there is often forgotten
-## Exploratory testing for interaction terms is generally discouraged 
-## Realistically, interaction require 16x more data than main effects
-## If N<8k, often better to test each predictor singly 
+
+#~ Lesson 1 ------
+#~ Automatic model simplification comes with a considerable burden of multiple 
+#~ testing, especially if the initial full model was overfitted (N<3k, 
+#~ k = number of parameters). Minimal models often look convincing, but the 
+#~ problematic history of getting there is often forgotten.
+#~ Exploratory testing of many interaction terms is generally discouraged. 
+#~ Realistically, interaction require 16x more data than main effects.
+#~ If N is small (e.g. N<30), it is better to test each predictor singly. 
 
 
 # 2. Pseudoreplication -----
 
+#~ Introduction to pseudoreplication ----
+#~ In my opinion, pseudoreplication is the most underestimated problem in the
+#~ reproducibility crisis. P-values are calculated under the assumption that 
+#~ the data points are independent of each other (unless you specify existing
+#~ dependencies in your model). Yet, in reality there are many sources of non-
+#~ independence: repeataed measures from the same individual, individuals that
+#~ are genetically related, samples that are geographically structures, 
+#~ observations that are related to each other in time. Failing to account for
+#~ such dependencies may mean to overestimate the true sample size and hence 
+#~ confidence in the findings. 
 
-## A. Get the basic idea -----
+# A. Getting the basic idea -----
 
-### create two samples (group A and B) of 10 human height measurements drawn from a normal distribution of mean 165 and sd 10
+#~ Let's create two samples (group A and B) of 10 human height measurements 
+#~ that are drawn from the same (!) normal distribution of mean 165 and sd 10
+
 set.seed(20220721)
 
 sample1 <- data.frame(
@@ -80,45 +146,85 @@ sample2
 dataset <- rbind(sample1, sample2)
 dataset
 
-boxplot(dataset$Height ~ dataset$Group) ### plot with all data points, mean, visualize noise
+boxplot(dataset$Height ~ dataset$Group)
 
-### Test whether the average height differs significantly between groups A and B
+#~ Due to sampling noise, the two groups A and B will never be identical.
+#~ Let's test whether the average height differs significantly between A and B
+
 model1 <- lm(Height ~ Group, data = dataset)
-summary(model1) # the difference is clearly non-significant (p=0.357)
+summary(model1) 
 
-### copy the data 10 times (i.e. exact replicates)
+#~ In the model output, the intercept represents Group A (on average 168.13 cm) 
+#~ and group B differs from that by -4.565 cm (being shorter).
+#~ Yet, the difference is clearly non-significant (p=0.357).
+#~ Now, the researcher decides that there is too much noise in the data, that
+#~ prevents him/her from seeing the truth that B is in fact shorter.
+#~ To increase precision, the researcher hence measures each person 10 times.
+#~ For now, let's assume that the 10 repeated measures turn out exactly the same.
+#~ So we essentially copy the same data 10 times into a large table that 
+#~ contains all 20 x 10 = 200 measurements.
+
 dataset10 <- rbind(dataset, dataset, dataset, dataset, dataset, dataset, dataset, dataset, dataset, dataset)
-#### proper way to write this: data10 <- do.call("rbind", replicate(10, dataset, simplify = FALSE))
+### proper way to write this: data10 <- do.call("rbind", replicate(10, dataset, simplify = FALSE))
 
-### Test whether the average height is now different between the groups
-### with each individual measured 10 times (identical values!)
+#~ Now we test again whether the average height is different between the groups,
+#~ with each individual measured 10 times (identical values!).
+
 model2 <- lm(Height ~ Group, data = dataset10)
-summary(model2) # the difference appears highly significant (p=0.002)
+summary(model2) 
 
-## Lesson 2: With pseudoreplication, p-values become incorrect
-## (assumption of independence of data points is being violated)
-## SEs (and CIs) are too small, confidence in the difference is too high
+#~ Note that the parameter estimates are still the same (168.13 and -4.565)
+#~ but the Standard Errors have become much smaller (higher confidence) 
+#~ and hence the same difference of 4.565 cm is judged as highly significant 
+#~ (p=0.002). This is because the model assumes that there are N=100 independent
+#~ samples in each group, and with such high N, a difference by 4.565 cm would 
+#~ not easily arise by chance.
 
-## B. A more realistic situation: there is a small measurement error (i.e. replicates are not exact) -----
+#~ Lesson 2A -----
+#~ Note the meaning of the term "pseudoreplication", in contrast to having truly
+#~ independent samples only.
+#~ The assumption of independence of data points is being violated.
+#~ With pseudoreplication, p-values become simply incorrect.
+#~ SEs (and CIs) are too small, confidence in the difference is too high.
 
-### create a small normally distributed measurement error
+# B. A realistic example with measurement error (replicates are not identical) -----
+
+#~ This time we add a little bit of measurement error to each measurement 
+#~ (with a mean of 0 and SD of 0.5 cm)
+
 dataset10$SmallNoise <- rnorm(200, 0, 0.5)
 dataset10$HeightWithSmallNoise <- dataset10$Height + dataset10$SmallNoise
 View(dataset10)
 
-### Test whether the average height differs between the groups, with the same data replicated 10 times with small noise
+#~ Again we test whether the average height differs between the groups, 
+#~ where each individual was measured 10 times with some error
+
 model3 <- lm(HeightWithSmallNoise ~ Group, data = dataset10)
-summary(model3) # the difference again appears highly significant (p=0.002); practically identical to model2
+summary(model3) 
 
-### Correct model -> nest value within individuals (= add IndID as a random effect (intercept) in a mixed-effect model)
+#~ Note that the estimates have changed slightly (compared to model 2) due to
+#~ the added noise, but the conclusions are the same (p=0.00167)
+
+#~ Now, in such realistic data sets, we can start specifying how the data points
+#~ are non-independent. We specify individual identity (IndID) as a random 
+#~ effect in a mixed effect model, thereby allowing each individual to have its
+#~ own average phenotype ("random intercepts")
+
 model4 <- lmer(HeightWithSmallNoise ~ Group + (1|IndID), data = dataset10)
-summary(model4) # correct p-value, the IndID explains most of the variance
+summary(model4) 
 
-## Lesson 3: Fitting individual ID as a random intercept takes care of the repeated measurements per individual
-## and restores the p-value we had before (p=0.357)
+#~ Note that this gets us back to the correct p-value (p=0.349) 
+#~ very close to the one we had before adding replicates. 
+#~ Note from the output on random effects that nearly all Variance is explained 
+#~ by IndID (116.9409) compared to the Residual (0.2804) which is the 
+#~ measurement error that we added to each value of height.
+
+#~ Lesson 2B ----- 
+#~ Fitting individual ID as a random intercept takes care of the 
+#~ repeated measurements per individual and restores the correct p-value
 
 
-## C. A real example: Egg Mass -----
+# C. A real example: Egg Mass -----
 
 ### i. Random intercept: Feeding treatment effect on egg mass  -----
 
@@ -228,7 +334,7 @@ summary(mod_egg3) # significant interaction (i.e. effect of trt on slope 'egg ma
 mod_egg4 <- lmer(Egg_mass ~ Trt*Laying_order + (Laying_order|Female_ID), data = d45)
 summary(mod_egg4) # non-significant interaction, equivalent to the t test (lm) above
 
-## Lesson 4: Sometimes pseudoreplication lies in slopes rather than intercepts
+## Lesson 2C: Sometimes pseudoreplication lies in slopes rather than intercepts
 ## i.e. individuals differ not in their mean value of the dependent variable (y)
 ## but rather in how the dependent variable (y) changes in response to another variable (X)
 ## This variable x may be continuous or just consist of two classes (treatment A vs B)
@@ -292,7 +398,7 @@ varcorsmod = c(VarCorr(mod_song3)$Animal, attr(VarCorr(mod_song3), "sc")^2)
 h2.mod = varcorsmod/sum(varcorsmod)
 h2.mod
 
-## Lesson 5: Non-independence of data points may sometimes be hard to account for completely
+## Lesson 2D: Non-independence of data points may sometimes be hard to account for completely
 ## Besides relatedness of individuals (causing non-independence in heritable traits)
 ## there is often spatial or temporal autocorrelation in the data
 ## All these dependencies can be modeled, but this is challenging and rarely done perfectly
@@ -353,7 +459,7 @@ tail(d8)
 mod_latency4 <- glmer (Latency_min ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
 
-## Lesson 6: The use of non-Gaussian models (especially Poisson models) should always ring an alarm bell!
+## Lesson 3: The use of non-Gaussian models (especially Poisson models) should always ring an alarm bell!
 ## Has the author accounted for overdispersion?
 ## Does a Gaussian model (fail safe and equally powerful) yield the same conclusion?
 ## If not, better don't trust the Poisson model!
