@@ -3,15 +3,16 @@
 # General Introduction ----
 #~ Statistical testing is used to distinguish "significant" patterns from
 #~ random noise. P-values are supposed to tell us how often a pattern of a
-#~ certain strength or magnitude (i.e. effect size) arises by chance alone.
-#~ However, in practice, there are many mistakes that one can make during data
-#~ analysis, and many of them will result in anti-conservative p-values. This
-#~ means that we often believe that we have discovered a real effect, 
+#~ certain strength or magnitude (i.e. effect size for a given N) arises by 
+#~ chance alone. However, in practice, there are many mistakes that one can make 
+#~ during data analysis, and many of them will result in anti-conservative 
+#~ p-values. Hence, we often believe that we have discovered a real effect, 
 #~ but in fact this was just a matter of chance (i.e. we got a false-positive 
-#~ finding). According to my experience, anti-conservative p-values (i.e. 
-#~ confidence intervals of effect sizes that are too narrow) are a major reason
-#~ why many research findings cannot be replicated between studies (i.e. meta 
-#~ analyses show high levels of heterogeneity in effect sizes between studies).
+#~ finding). According to my experience, anti-conservative p-values (or likewise 
+#~ confidence intervals that are too narrow) are a major reason why many 
+#~ research findings cannot be replicated between studies. Accordingly, meta 
+#~ analyses show high levels of heterogeneity in effect sizes between studies.
+
 #~ Here we will work through the most common and most serious mistakes. If you 
 #~ learn to avoid these mistakes, you will less often be fooled by the data, and
 #~ will less often waste your time on follow-up studies of phenomena that do not
@@ -90,7 +91,8 @@ mydata
 source("Fun_Model_Simplifier.R")
 Model_Simplifier()
 
-# Let's try this again with different seeds
+#~ The high significance of the minimal model and of its terms is remarkable 
+#~ Let's try this again with different seeds
 
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 8)
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 9)
@@ -117,14 +119,14 @@ Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
 #~ the data points are independent of each other (unless you specify existing
 #~ dependencies in your model). Yet, in reality there are many sources of non-
 #~ independence: repeataed measures from the same individual, individuals that
-#~ are genetically related, samples that are geographically structures, 
+#~ are genetically related, samples that are geographically structured, 
 #~ observations that are related to each other in time. Failing to account for
 #~ such dependencies may mean to overestimate the true sample size and hence 
 #~ confidence in the findings. 
 
 # A. Getting the basic idea -----
 
-#~ Let's create two samples (group A and B) of 10 human height measurements 
+#~ Let's create two samples (groups A and B) of 10 human height measurements 
 #~ that are drawn from the same (!) normal distribution of mean 165 and sd 10
 
 set.seed(20220721)
@@ -224,18 +226,19 @@ summary(model4)
 #~ repeated measurements per individual and restores the correct p-value
 
 
-# C. A real example: Egg Mass -----
+# C. A real example: Is egg mass affected by treatment? -----
 
-### i. Random intercept: Feeding treatment effect on egg mass  -----
+#~ This is about fitting random intercepts vs. random slopes. -----
+#~ For this we load and inspect some data on egg mass in relation to treatment
+
 
 d45 <- read.table("dataFig45.txt", sep='\t', header=T)
 View(d45)
 
-### Female ID and Trt are numeric values that should be considered as factors (i.e. categories) not as numbers
+#~ Female ID and Trt are numeric values that should be considered as factors
 d45$Female_ID <-as.factor(d45$Female_ID)
 d45$Trt <- as.factor(d45$Trt)
 
-### plot of the mass of each of the 5 eggs of each female 
 ggplot(data=d45, aes(x=Female_ID, y=Egg_mass, group=Trt, colour=Trt))  +
   geom_point(size=2)+
   labs(x="Female ID", y="Egg mass")+
@@ -246,20 +249,30 @@ ggplot(data=d45, aes(x=Female_ID, y=Egg_mass, group=Trt, colour=Trt))  +
   theme(axis.text = element_text (size=10), axis.title = element_text (face="bold",size=13)) + 
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
 
-### Test whether feeding treatment has an effect on egg mass
-#### pseudoreplicated
+#~ The plot illustrates that we have 5 eggs per female and two times 6 females
+#~ belonging to the two treatment groups
+
+#~ We want to test whether the treatment had an effect on egg mass.
+#~ If we forget that the data is pseudoreplicated, and that we do not have 30
+#~ independent eggs of each type, but rather 6 females of each type, the 
+#~ following incorrect model shows a significant treatment effect
+
 mod_egg1 <- lm(Egg_mass ~ Trt, data = d45)
 summary(mod_egg1)
 
-#### correct
+#~ When we specify Female_ID as a random intercept effect, the significance is
+#~ gone. 
+
 mod_egg2 <- lmer(Egg_mass ~ Trt + (1|Female_ID), data = d45)
 summary(mod_egg2)
 
+#~ Note the random effects structure of the model. About half of the variance 
+#~ is explained by female identity
 
+#~ Maybe we failed to see a treatment effect on egg mass because we ignored 
+#~ information about the order in which the 5 eggs of each female were laid.
+#~ So let's plot egg size in relation to laying order.
 
-### ii. Random slopes: Laying order effect on egg mass ------
-
-### Plots with raw data, 1 color per Trt, 1 slope per female + 1 large average slope per Trt
 ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt))  +
   geom_point(size=2)+
   geom_smooth(size = 2, method='lm', se = FALSE) +
@@ -272,12 +285,21 @@ ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt)
   theme(axis.text = element_text (size=10)) +
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
 
-### Model on raw data (1 line per egg) with random intercept only
+#~ The plot suggests that egg mass was fairly constant over the laying sequence
+#~ in the "Reduced" treatment group, while egg mass increased over the sequence
+#~ in the "Enhanced" group. Let's test whether the interaction between treatment
+#~ and laying sequence is significant!
+
 mod_egg3 <- lmer(Egg_mass ~ Trt*Laying_order + (1|Female_ID), data = d45)
-summary(mod_egg3) # significant interaction (i.e. effect of trt on slope 'egg mass over laying order' significant)
+summary(mod_egg3) 
 
+#~ The model suggests that the slopes are significantly different (p=0.0479).
+#~ Note the random effects structure: we have accounted for the fact that 
+#~ females have different intercepts (i.e. lay eggs of different mean size), but 
+#~ is this sufficient, if our interest lies in a slope of change of egg mass 
+#~ over the laying sequence?
+#~ Let's plot what each of the 12 females did in this respect!
 
-### Plots with raw data, 1 color per Trt, 1 slope per female + 1 large average slope per Trt
 ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt))  +
   geom_point(size=2)+
   geom_smooth(aes(group = Female_ID), method = "lm", se = FALSE) +
@@ -291,24 +313,29 @@ ggplot(data=d45, aes(x = Laying_order,  y = Egg_mass, group = Trt, colour = Trt)
   theme(axis.text = element_text (size=10)) +
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
 
+#~ Seeing it this way, you may wonder whether the 6 slopes in orange are in fact
+#~ steeper than the 6 slopes in blue.
+#~ Hence, let's extract the 12 regression slopes manually.
 
-### Compare the slopes of the females between treatment groups
-#### warning: not something to actually do as you lose variance from the raw data (each individual egg value)
-#### create a dataset with 1 row per female, with their appropriate treatment
+#~ We create a data set with 1 row per female, with their appropriate treatment
 
 d45_F <- unique(d45[,c('Female_ID', 'Trt')]) # one line per female 
 d45_F$slope <- NA
 d45_F
 
-##### get the slope for female 1
+#~ We then calculate the slope for female 1 
+
 mod_F1 <- lm(Egg_mass ~ Laying_order, data = d45[d45$Female_ID == "1",])
 summary(mod_F1)
 summary(mod_F1)$coeff[2,1]
 
+#~ And we add her value to the data set
+
 d45_F$slope[1] <- summary(mod_F1)$coeff[2,1]
 d45_F
 
-#### get the slope for each female
+#~ Using a loop function, we now do this for each female
+
 for (i in 1:12){
   j <- as.character(i)
   
@@ -320,27 +347,45 @@ for (i in 1:12){
 
 d45_F
 
-#### compare the female slopes between treatment groups
-summary(lm(slope ~ Trt, data = d45_F)) # Trt effect on slope not significant
+#~ Now, let's compare the female slopes between treatment groups
 
+summary(lm(slope ~ Trt, data = d45_F)) 
 
+#~ This is like doing a t-test of 6 vs 6 slopes, and it is clearly non-
+#~ significant (p=0.248) compared to the p=0.0479 we had before.
+#~ What was wrong with that random intercept model? 
 
-### Model on raw data (1 line per egg) with random intercept only
 mod_egg3 <- lmer(Egg_mass ~ Trt*Laying_order + (1|Female_ID), data = d45)
-summary(mod_egg3) # significant interaction (i.e. effect of trt on slope 'egg mass over laying order' significant)
+summary(mod_egg3) 
 
+#~ Note that our interest lies in egg mass slopes over the laying sequence 
+#~ (whether they increase or decrease), and this is not the same as variation
+#~ in intercepts (generally large or small eggs). Given this interest in 
+#~ whether the treatment affected those slopes (interaction term), we need to
+#~ allow each female to have a random slope of change (as this may be a 
+#~ physiological peculiarity that just varies widely between females and that 
+#~ is not affected by the treatment).
+#~ So let's specify a random slope model: while (1|Female_ID) gives each female
+#~ a random intercept, (Laying_order|Female_ID) gives each female a random 
+#~ intercept and a random slope over the laying order.
 
-### Model with random intercept and random slope (each female may have different slope of egg mass along laying order)
 mod_egg4 <- lmer(Egg_mass ~ Trt*Laying_order + (Laying_order|Female_ID), data = d45)
-summary(mod_egg4) # non-significant interaction, equivalent to the t test (lm) above
+summary(mod_egg4) 
 
-## Lesson 2C: Sometimes pseudoreplication lies in slopes rather than intercepts
-## i.e. individuals differ not in their mean value of the dependent variable (y)
-## but rather in how the dependent variable (y) changes in response to another variable (X)
-## This variable x may be continuous or just consist of two classes (treatment A vs B)
-## A random slope model accounts for the fact that individuals differ in their response to x
-## and this may be necessary as soon as you have 3 or more values per individual
+#~ This model shows that the above t-test (p=0.248) was correct, and that the
+#~ treatment did not affect the female slopes. 
 
+#~ Lesson 2C: Sometimes pseudoreplication lies in slopes rather than intercepts
+#~ i.e. individuals differ not in their mean value of the dependent variable (y)
+#~ but rather in how the dependent variable (y) changes in response to another 
+#~ variable (X). This variable x may be continuous or just consist of two 
+#~ conditions (environment 1 vs. 2). A random slope model accounts for the fact 
+#~ that individuals differ in their response to x and this may be necessary to 
+#~ consider as soon as you have 3 or more values per individual. More generally,
+#~ failing to see the true structure of dependencies yields much spurious
+#~ significance. There is a large body of literature reporting significant
+#~ treatment by laying order interactions - most likely a huge collection of
+#~ false-positive findings.
 
 ## D. Genetic relatedness -----
 
