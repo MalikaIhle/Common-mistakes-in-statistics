@@ -50,6 +50,7 @@ library(magrittr)
 #~ Such "playing with data until reaching significance" is known as p-hacking, 
 #~ and this is so well known (and frowned upon) that we do not need to cover
 #~ this here. 
+
 #~ Yet what is sometimes overlooked, is what we called "cryptic multiple
 #~ hypothesis testing" during model selection (Forstmeier & Schielzeth 2011). 
 #~ Below, you will experience a drastic example, which works so well because the 
@@ -91,7 +92,8 @@ mydata
 source("Fun_Model_Simplifier.R")
 Model_Simplifier()
 
-#~ The high significance of the minimal model and of its terms is remarkable 
+#~ The high significance of the minimal model (p=0.005551) and of its terms 
+#~ (up to p=0.000613) is remarkable. 
 #~ Let's try this again with different seeds
 
 Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 8)
@@ -103,7 +105,7 @@ Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
 
 #~ Lesson 1 ------
 #~ Automatic model simplification comes with a considerable burden of multiple 
-#~ testing, especially if the initial full model was overfitted (N<3k, 
+#~ testing, especially if the initial full model was over-fitted (N<3k, 
 #~ k = number of parameters). Minimal models often look convincing, but the 
 #~ problematic history of getting there is often forgotten.
 #~ Exploratory testing of many interaction terms is generally discouraged. 
@@ -206,7 +208,7 @@ model3 <- lm(HeightWithSmallNoise ~ Group, data = dataset10)
 summary(model3) 
 
 #~ Note that the estimates have changed slightly (compared to model 2) due to
-#~ the added noise, but the conclusions are the same (p=0.00167)
+#~ the added noise, but the conclusions are the same (p=0.00199)
 
 #~ Now, in such realistic data sets, we can start specifying how the data points
 #~ are non-independent. We specify individual identity (IndID) as a random 
@@ -216,10 +218,10 @@ summary(model3)
 model4 <- lmer(HeightWithSmallNoise ~ Group + (1|IndID), data = dataset10)
 summary(model4) 
 
-#~ Note that this gets us back to the correct p-value (p=0.349) 
+#~ Note that this gets us back to the correct p-value (p=0.357) 
 #~ very close to the one we had before adding replicates. 
 #~ Note from the output on random effects that nearly all Variance is explained 
-#~ by IndID (116.9409) compared to the Residual (0.2804) which is the 
+#~ by IndID (116.7704) compared to the Residual (0.2427) which is the 
 #~ measurement error that we added to each value of height.
 
 #~ Lesson 2B ----- 
@@ -251,7 +253,7 @@ ggplot(data=d45, aes(x=Female_ID, y=Egg_mass, group=Trt, colour=Trt))  +
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
 
 #~ The plot illustrates that we have 5 eggs per female and two times 6 females
-#~ belonging to the two treatment groups
+#~ belonging to the two treatment groups.
 
 #~ We want to test whether the treatment had an effect on egg mass.
 #~ If we forget that the data is pseudoreplicated, and that we do not have 30
@@ -366,9 +368,10 @@ summary(mod_egg3)
 #~ allow each female to have a random slope of change (as this may be a 
 #~ physiological peculiarity that just varies widely between females and that 
 #~ is not affected by the treatment).
-#~ So let's specify a random slope model: while (1|Female_ID) gives each female
-#~ a random intercept, (Laying_order|Female_ID) gives each female a random 
-#~ intercept and a random slope over the laying order.
+#~ So let's specify a random slope model! 
+#~ While (1|Female_ID) gives each female a random intercept, 
+#~ (Laying_order|Female_ID) gives each female a random intercept and a random 
+#~ slope over the laying order.
 
 mod_egg4 <- lmer(Egg_mass ~ Trt*Laying_order + (Laying_order|Female_ID), data = d45)
 summary(mod_egg4) 
@@ -438,6 +441,7 @@ summary(mod_song2)
 #~ entire 8-generations pedigree of this population (comprising 3404 birds).
 
 ped <- read.table("data_ped3404_Seewiesen.txt", header=TRUE, sep="\t", na.strings="NA") 
+tail(ped)
 
 #~ Now we use the pedigreemm package to link the pedigree information to the 
 #~ data table 
@@ -528,6 +532,8 @@ summary(mod_latency1)
 d8$Latency_seconds <- d8$Latency_min * 60
 head(d8)
 tail(d8)
+mod_latency1s <- glm (Latency_seconds ~ Exploration_score, data = d8, family = "poisson")
+summary(mod_latency1s)
 
 #~ Now we are even 83.86 SEs away from zero! What a great tool for producing
 #~ significant results!
@@ -542,8 +548,8 @@ summary(mod_latency2)
 #~ The problem with count data is that these usually do not meet the criteria of
 #~ a Poisson process. Instead, counts are typically over-dispersed (i.e. with 
 #~ more extreme values than expected). Under a Poisson distribution, with a mean
-#~ of about 100 min, the data should range from about 70 to 130 min. Cases like
-#~ 550 min (top left of the plot) should not occur, and hence are given an 
+#~ of about 100 min, the data should range from about 75 to 130 min. Cases like
+#~ 559 min (top left of the plot) should not occur, and hence are given an 
 #~ extreme weight (in terms of evidence), and this gets worse if we take the 
 #~ even larger counts in seconds.
 
@@ -558,7 +564,7 @@ summary(mod_latency3)
 
 #~ If you have random effects (hence using glmer) you can just add another 
 #~ random effect that has as many level as you have rows in your data sheet.
-#~ This is called an "observation-level random effect"(OLRE).
+#~ This is called an "observation-level random effect" (OLRE).
 #~ So we add such a column to our data sheet.
 
 d8$ObsvID <- 1:nrow(d8)
@@ -584,5 +590,3 @@ summary(mod_latency4)
 #~ Forstmeier, W., Wagenmakers, E.-J. and Parker, T. H. (2017) Detecting and avoiding likely false-positive findings – A practical guide. Biological Reviews 92, 1941-1968.
 #~ Forstmeier, W. and Schielzeth, H. (2011) Cryptic multiple hypotheses testing in linear models: overestimated effect sizes and the winner’s curse. Behavioral Ecology Sociobiology 65, 47-55.
 #~ Schielzeth, H. and Forstmeier, W. (2009) Conclusions beyond support: Over-confident estimates in mixed-models. Behavioral Ecology 20, 416-420. 
-
-
