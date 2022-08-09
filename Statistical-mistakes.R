@@ -107,7 +107,8 @@ Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
 #~ k = number of parameters). Minimal models often look convincing, but the 
 #~ problematic history of getting there is often forgotten.
 #~ Exploratory testing of many interaction terms is generally discouraged. 
-#~ Realistically, interaction require 16x more data than main effects.
+#~ Realistically, one can argue that interaction require 16x more data than main 
+#~ effects (https://statmodeling.stat.columbia.edu/2018/03/15/need-16-times-sample-size-estimate-interaction-estimate-main-effect/).
 #~ If N is small (e.g. N<30), it is better to test each predictor singly. 
 
 
@@ -124,7 +125,7 @@ Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
 #~ such dependencies may mean to overestimate the true sample size and hence 
 #~ confidence in the findings. 
 
-# A. Getting the basic idea -----
+# 2A. Getting the basic idea -----
 
 #~ Let's create two samples (groups A and B) of 10 human height measurements 
 #~ that are drawn from the same (!) normal distribution of mean 165 and sd 10
@@ -189,7 +190,7 @@ summary(model2)
 #~ With pseudoreplication, p-values become simply incorrect.
 #~ SEs (and CIs) are too small, confidence in the difference is too high.
 
-# B. A realistic example with measurement error (replicates are not identical) -----
+# 2B. A realistic example with measurement error (replicates are not identical) -----
 
 #~ This time we add a little bit of measurement error to each measurement 
 #~ (with a mean of 0 and SD of 0.5 cm)
@@ -226,7 +227,7 @@ summary(model4)
 #~ repeated measurements per individual and restores the correct p-value
 
 
-# C. A real example: Is egg mass affected by treatment? -----
+# 2C. A real example: Is egg mass affected by treatment? -----
 
 #~ This is about fitting random intercepts vs. random slopes. -----
 #~ For this we load and inspect some data on egg mass in relation to treatment
@@ -387,7 +388,11 @@ summary(mod_egg4)
 #~ treatment by laying order interactions - most likely a huge collection of
 #~ false-positive findings.
 
-## D. Genetic relatedness -----
+## 2D. Genetic relatedness -----
+
+#~ Here is an example that shows that controlling for pseudoreplication can be
+#~ quite a challenge.
+#~ Let's begin by reading and plotting the data
 
 d7 <- read.table("dataFig7.txt", sep='\t', header=T)
 head(d7)
@@ -405,57 +410,94 @@ ggplot(d7, aes(x=ESR_10, y=Courtship_rate)) +
   geom_smooth(method='lm',color = "red") +
   scale_x_continuous(breaks=c(0,1,2), labels=c("0\n\n", "1\nheterozygous", "2\nhomozygous")) 
 
+#~ Here we look at an association between genotype (at the locus of the estrogen
+#~ receptor) and phenotype (courtship behaviour) of male zebra finches (N=1556).
+#~ Males that have one or two copies of a certain allele sing at a higher rate.
+#~ Given the large number of males that have been measured, the effect appears
+#~ highly significant.
 
-### incorrect model
 mod_song1 <- glm (Courtship_rate ~ ESR_10, data = d7)
 summary(mod_song1)
 
-### deceptive model
+#~ However, all these males come from the same captive population (comprising 8
+#~ generations), and families in which the ESR1_10 allele is more common may 
+#~ just happen to have (other) genes that lead to a high courtship rate.
+#~ Let's see whether adding Family_ID as a random effect makes a difference.
+
 mod_song2 <-	lmer (Courtship_rate ~ ESR_10 + (1|Family_ID), data = d7)
 summary(mod_song2)
 
-### correct model : include pedigree
-#### get pedigrees
+#~ In this model, Family_ID is defined as the joint identities of the parents. 
+#~ This random effect has 632 levels, and hence it groups together on average
+#~ 2-3 brothers in a family, and indeed this explains some variance (0.7041).
+#~ Accordingly, the effect is now estimated to be somewhat smaller and with
+#~ larger uncertainty (Std. Error), leading to a larger p-value than before. 
+
+#~ Still, this does not take into account the resemblance between father and 
+#~ son, or other forms of relatedness. To get this right, we need to fit the 
+#~ entire 8-generations pedigree of this population (comprising 3404 birds).
+
 ped <- read.table("data_ped3404_Seewiesen.txt", header=TRUE, sep="\t", na.strings="NA") 
 
-#### get phenotypes
-phenos <- read.table("dataFig7.txt", header=TRUE, sep="\t")
+#~ Now we use the pedigreemm package to link the pedigree information to the 
+#~ data table 
 
-#### prepare data 
-##### calculate FPed via pedigreemm
 ped_mm <- pedigree(sire = as.character(ped$MID), dam  = as.character(ped$FID), label = as.character(ped$Animal))
 FPed <- inbreeding(ped_mm)
 ped$FPed <- FPed
-all.data <- merge(phenos, ped, by.x="Animal", by.y="Animal")
-
-##### some basic formatting
+all.data <- merge(d7, ped, by.x="Animal", by.y="Animal")
 all.data$Animal <- factor(all.data$Animal)
 
-
-##### model
+#~ Now we can run the pedigreemm model
+#~ Depending on your computer this might take time (3 min on my laptop)
 
 mod_song3 = pedigreemm(Courtship_rate ~ ESR_10 + (1|Animal), pedigree=list(Animal=ped_mm)
                        , data=all.data, verbose=TRUE, na.action=na.exclude
                        , control=lmerControl(check.nobs.vs.nlev="ignore"
                        , check.nobs.vs.nRE="ignore", check.nobs.vs.rankZ = "ignore"))
 summary(mod_song3)
+
+#~ You can see that the estimated effect (per copy of ESR1_10) has decreased
+#~ further (0.25852, previously 0.32662, initially 0.39830), suggesting that 
+#~ more of the variance is attributed to chance differences between families,
+#~ and less variance to the ESR1 gene. The standard Error did not increase
+#~ further since the previous model, but the t-value has decreased (2.896, 
+#~ previously 3.64, initially 4.703), and now corresponds to a p-value of 
+
+2*(1-pnorm(2.896))
+
+#~ about 0.004, which is far less compelling than initially. 
+#~ A cool side effect of pedigreemm is that you can estimate the heritability
+#~ of the trait (courtship rate).
+
 varcorsmod = c(VarCorr(mod_song3)$Animal, attr(VarCorr(mod_song3), "sc")^2)
 h2.mod = varcorsmod/sum(varcorsmod)
 h2.mod
 
-## Lesson 2D: Non-independence of data points may sometimes be hard to account for completely
-## Besides relatedness of individuals (causing non-independence in heritable traits)
-## there is often spatial or temporal autocorrelation in the data
-## All these dependencies can be modeled, but this is challenging and rarely done perfectly
-## Hence p-values often remain anti-conservative, and this explains in part the difficulties in replicating findings
+#~ Hence, 36.4% of the variance is additive genetic, 63.6% is residual.
+
+#~ Lesson 2D: Non-independence of data points may sometimes be hard to account 
+#~ for completely.Besides relatedness of individuals (causing non-independence 
+#~ in heritable traits), there is often spatial or temporal autocorrelation in 
+#~ the data. All these dependencies can be modeled, but this is challenging and 
+#~ rarely done perfectly. Note that, in the wild, we normally would not have
+#~ such pedigree information. Hence p-values often remain anti-conservative, and
+#~ this explains in part the difficulties in replicating findings
 
 
 # 3. Dealing with non-Gaussian data -----
 
-#d8 <- read.table("C://C//R_files//dataFig8.txt", sep='\t', header=T)
+#~ Finally, one should know about the risks of modelling count data.
+#~ Good news first: if your data is not normally distributed you can still 
+#~ continue as usual (assuming normally distributed, "Gaussian", errors) and be 
+#~ pretty safe (see Knief & Forstmeier 2021).
+#~ However, if you instead try to model count data with a Poisson error 
+#~ distribution you should be aware that this is very risky.
+
+#~ Again we start by reading and plotting some data
+
 d8 <- read.table("dataFig8.txt", sep='\t', header=T)
 head(d8)
-
 ggplot(data=d8, aes(x=Exploration_score, y=Latency_min))  +
   geom_point(size=2, col="dodgerblue4")+xlim(c(-1.65,1.73))+ ylim(0,600)+scale_x_continuous(breaks=seq(-1.5,1.5, 0.5))+
   geom_smooth(method='lm', color='red')+
@@ -467,47 +509,80 @@ ggplot(data=d8, aes(x=Exploration_score, y=Latency_min))  +
   theme(axis.title = element_text (face="bold",size=13)) + 
   theme(axis.text = element_text (size=10)) 
 
+#~ In this example a researcher measured the latency of birds to return to their
+#~ nest after a disturbance, in relation to some measure of their exploratory 
+#~ behaviour. Although the regression line looks very flat, the relationship 
+#~ was said to be highly significant. A look into the Methods revealed that the
+#~ latency was modeled as a count of minutes, assuming a Poisson error 
+#~ distribution.
 
-# consider number of minutes as a count of minutes, i.e. a Poisson distribution
 mod_latency1 <- glm (Latency_min ~ Exploration_score, data = d8, family = "poisson")
 summary(mod_latency1)
 
-## same model in seconds!
+#~ Indeed, the negative slope of the regression line appears to be 10.83 SEs 
+#~ away from zero (z = -10.83 = -0.16112 / 0.01488)!
+#~ This is against all intuition about how significant effects look like.
+#~ But wait, I can get this even more significant!
+#~ Let's model this as a count of seconds by multiplying the minutes with 60
+
 d8$Latency_seconds <- d8$Latency_min * 60
 head(d8)
 tail(d8)
 
-mod_latency1sec <- glm (Latency_seconds ~ Exploration_score, data = d8, family = "poisson")
-summary(mod_latency1sec)
+#~ Now we are even 83.86 SEs away from zero! What a great tool for producing
+#~ significant results!
+#~ But let's try to be realistic. We log-transform the dependent variable to 
+#~ approach a normal distribution and then use a model with Gaussian errors.
 
-
-# transform latency to approximate a Gaussian distribution
-mod_latency2 <- glm (log(Latency_min) ~ Exploration_score, data = d8, family = "gaussian") # log in R = Ln
+mod_latency2 <- glm (log(Latency_min) ~ Exploration_score, data = d8, family = "gaussian") 
 summary(mod_latency2)
 
-# BTW, this is equal to:
-mod_latency2bis <- lm (log(Latency_min) ~ Exploration_score, data = d8)
-summary(mod_latency2bis)
+#~ The p-value of 0.257 fits much better to the shallow regression line.
 
+#~ The problem with count data is that these usually do not meet the criteria of
+#~ a Poisson process. Instead, counts are typically over-dispersed (i.e. with 
+#~ more extreme values than expected). Under a Poisson distribution, with a mean
+#~ of about 100 min, the data should range from about 70 to 130 min. Cases like
+#~ 550 min (top left of the plot) should not occur, and hence are given an 
+#~ extreme weight (in terms of evidence), and this gets worse if we take the 
+#~ even larger counts in seconds.
 
-# correct: use a quasi poisson distribution
+#~ To account for the over-dispersion in the count data, there are two ways.
+#~ If you have no random effects (hence a glm) you can just write "quasipoisson"
+#~ instead of "poisson".
+
 mod_latency3 <- glm (Latency_min ~ Exploration_score, data = d8, family = "quasipoisson")
 summary(mod_latency3)
 
+#~ This gives essentially the same p-value (p=0.292) as the Gaussian model above
 
-# also correct: add an overdispersion parameter (observation-level random effect) to a poisson model
+#~ If you have random effects (hence using glmer) you can just add another 
+#~ random effect that has as many level as you have rows in your data sheet.
+#~ This is called an "observation-level random effect"(OLRE).
+#~ So we add such a column to our data sheet.
 
 d8$ObsvID <- 1:nrow(d8)
 head(d8)
 tail(d8)
 
+#~ And then we fit this column (ObsvID) as a random effect
+
 mod_latency4 <- glmer (Latency_min ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
 
-## Lesson 3: The use of non-Gaussian models (especially Poisson models) should always ring an alarm bell!
-## Has the author accounted for overdispersion?
-## Does a Gaussian model (fail safe and equally powerful) yield the same conclusion?
-## If not, better don't trust the Poisson model!
+#~ Again, we get a reasonable p-value (p=0.232)
 
+#~ Lesson 3: The use of non-Gaussian models (especially Poisson models) should 
+#~ always ring an alarm bell! Has the author accounted for over-dispersion?
+#~ Does a Gaussian model (which is fail safe and equally powerful; see Knief and
+#~ Forstmeier 2021) yield the same conclusion? 
+#~ If not, better don't trust the Poisson model!
+
+# References
+
+#~ Knief, U. and Forstmeier, W. (2021) Violating the normality assumption may be the lesser of two evils. Behavior Research Methods 53: 2576-2590.
+#~ Forstmeier, W., Wagenmakers, E.-J. and Parker, T. H. (2017) Detecting and avoiding likely false-positive findings – A practical guide. Biological Reviews 92, 1941-1968.
+#~ Forstmeier, W. and Schielzeth, H. (2011) Cryptic multiple hypotheses testing in linear models: overestimated effect sizes and the winner’s curse. Behavioral Ecology Sociobiology 65, 47-55.
+#~ Schielzeth, H. and Forstmeier, W. (2009) Conclusions beyond support: Over-confident estimates in mixed-models. Behavioral Ecology 20, 416-420. 
 
 
