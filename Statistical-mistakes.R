@@ -1,5 +1,8 @@
 # Common Mistakes in Statistics
 
+#~ by Dr. Wolfgang Forstmeier
+#~ 2022 09 27
+
 # General Introduction ----
 #~ Statistical testing is used to distinguish "significant" patterns from
 #~ random noise. P-values are supposed to tell us how often a pattern of a
@@ -23,7 +26,7 @@
 # 0. Set-up -----
 
 #~ Before we can start, we need to install and load some R packages
-#~ If the packages are not intstalled yet, use the 'install.packages'-line by
+#~ If the packages are not installed yet, use the 'install.packages'-line by
 #~ removing the # in front of it, and then run the line (Run button in RStudio)
 
 # install.packages(c("lme4", "lmerTest", "ggplot2","pedigreemm", "data.table", "magrittr" ))
@@ -48,7 +51,7 @@ library(magrittr)
 #~ such as adding more data, adding covariates, categorizing variables, 
 #~ transforming variables, removing outliers, removing a treatment category etc.
 #~ Such "playing with data until reaching significance" is known as p-hacking, 
-#~ and this is so well known (and frowned upon) that we do not need to cover
+#~ and this is so well-known (and frowned upon) that we do not need to cover
 #~ this here. 
 
 #~ Yet what is sometimes overlooked, is what we called "cryptic multiple
@@ -86,7 +89,7 @@ mydata
 
 #~ Now we fit a full model that tries to explain Y by the 6 main effects (A-F)
 #~ and by the 15 (two-way) interactions.
-#~ This "full model" we then automatically simplify by always removing the least
+#~ We then automatically simplify this "full model" by always removing the least
 #~ significant term until we get a "minimal model"
 
 source("Fun_Model_Simplifier.R")
@@ -121,7 +124,7 @@ Model_Simplifier(N_OBS = 30, N_MAIN_EFFECTS = 6, MYSEED = 12)
 #~ reproducibility crisis. P-values are calculated under the assumption that 
 #~ the data points are independent of each other (unless you specify existing
 #~ dependencies in your model). Yet, in reality there are many sources of non-
-#~ independence: repeataed measures from the same individual, individuals that
+#~ independence: repeated measures from the same individual, individuals that
 #~ are genetically related, samples that are geographically structured, 
 #~ observations that are related to each other in time. Failing to account for
 #~ such dependencies may mean to overestimate the true sample size and hence 
@@ -163,7 +166,7 @@ summary(model1)
 #~ and group B differs from that by -4.565 cm (being shorter).
 #~ Yet, the difference is clearly non-significant (p=0.357).
 #~ Now, the researcher decides that there is too much noise in the data, that
-#~ prevents him/her from seeing the truth that B is in fact shorter.
+#~ prevents them from seeing the truth that B is in fact shorter.
 #~ To increase precision, the researcher hence measures each person 10 times.
 #~ For now, let's assume that the 10 repeated measures turn out exactly the same.
 #~ So we essentially copy the same data 10 times into a large table that 
@@ -502,8 +505,9 @@ h2.mod
 
 d8 <- read.table("dataFig8.txt", sep='\t', header=T)
 head(d8)
+
 ggplot(data=d8, aes(x=Exploration_score, y=Latency_min))  +
-  geom_point(size=2, col="dodgerblue4")+xlim(c(-1.65,1.73))+ ylim(0,600)+scale_x_continuous(breaks=seq(-1.5,1.5, 0.5))+
+  geom_point(size=2, col="dodgerblue4")+ ylim(0,600)+ scale_x_continuous(breaks=seq(-1.5,1.5, 0.5))+
   geom_smooth(method='lm', color='red')+
   xlab("Exploration score")+ ylab("Latency to return (min)")+
   theme_classic() +
@@ -532,6 +536,7 @@ summary(mod_latency1)
 d8$Latency_seconds <- d8$Latency_min * 60
 head(d8)
 tail(d8)
+
 mod_latency1s <- glm (Latency_seconds ~ Exploration_score, data = d8, family = "poisson")
 summary(mod_latency1s)
 
@@ -571,7 +576,7 @@ d8$ObsvID <- 1:nrow(d8)
 head(d8)
 tail(d8)
 
-#~ And then we fit this column (ObsvID) as a random effect
+#~ And then we fit this column (ObsvID) as a random effect in our poisson model
 
 mod_latency4 <- glmer (Latency_min ~ Exploration_score + (1|ObsvID), data = d8, family = "poisson")
 summary(mod_latency4)
@@ -590,3 +595,4 @@ summary(mod_latency4)
 #~ Forstmeier, W., Wagenmakers, E.-J. and Parker, T. H. (2017) Detecting and avoiding likely false-positive findings – A practical guide. Biological Reviews 92, 1941-1968.
 #~ Forstmeier, W. and Schielzeth, H. (2011) Cryptic multiple hypotheses testing in linear models: overestimated effect sizes and the winner’s curse. Behavioral Ecology Sociobiology 65, 47-55.
 #~ Schielzeth, H. and Forstmeier, W. (2009) Conclusions beyond support: Over-confident estimates in mixed-models. Behavioral Ecology 20, 416-420. 
+
