@@ -10,7 +10,7 @@ It is licensed under a [Creative Commons Attribution-ShareAlike 4.0 Internationa
 
 ## During the session
 Please download this repository and turn it into a RStudio project by following these instructions:  
-1. click on the green 'Code' button on the top right of this repository and select 'download ZIP'  
+1. Click on the green 'Code' button on the top right of this repository and select 'download ZIP'  
 2. Once the .zip file downloaded, extract it and place the folder in the desired directory (e.g. Documents)  
 3. Open RStudio, and go to ‘File’, ‘New Project…’, and select ‘Existing Directory’  
 4. Select the downloaded (and extracted) folder, by clicking on ‘Browse’, then select ‘Create Project’  
