@@ -165,9 +165,9 @@ summary(model1)
 #~ In the model output, the intercept represents Group A (on average 168.13 cm) 
 #~ and group B differs from that by -4.565 cm (being shorter).
 #~ Yet, the difference is clearly non-significant (p=0.357).
-#~ Now, the researcher decides that there is too much noise in the data, that
+#~ Now, the researchers decide that there is too much noise in the data, that
 #~ prevents them from seeing the truth that B is in fact shorter.
-#~ To increase precision, the researcher hence measures each person 10 times.
+#~ To increase precision, the researchers hence measure each person 10 times.
 #~ For now, let's assume that the 10 repeated measures turn out exactly the same.
 #~ So we essentially copy the same data 10 times into a large table that 
 #~ contains all 20 x 10 = 200 measurements.
@@ -474,6 +474,12 @@ summary(mod_song3)
 2*(1-pnorm(2.896))
 
 #~ about 0.004, which is far less compelling than initially. 
+#~ Note the useful 'pnorm'-function that allows you to calculate p-values from 
+#~ t-values (assuming infinite degrees of freedom, which is somewhat anti-
+#~ conservative). If your N is small, you should instead use something like this
+
+2*(pt(abs(2.896),lower.tail=FALSE,df=20))
+
 #~ A cool side effect of pedigreemm is that you can estimate the heritability
 #~ of the trait (courtship rate).
 
@@ -481,7 +487,9 @@ varcorsmod = c(VarCorr(mod_song3)$Animal, attr(VarCorr(mod_song3), "sc")^2)
 h2.mod = varcorsmod/sum(varcorsmod)
 h2.mod
 
-#~ Hence, 36.4% of the variance is additive genetic, 63.6% is residual.
+#~ Hence, we estimate heritability from how much of the total variance can be 
+#~ explained by relatedness in the pedigree. Here, this is 36.4%, the remaining
+#~ 63.6% is residual variance.
 
 #~ Lesson 2D: Non-independence of data points may sometimes be hard to account 
 #~ for completely.Besides relatedness of individuals (causing non-independence 
@@ -519,10 +527,11 @@ ggplot(data=d8, aes(x=Exploration_score, y=Latency_min))  +
 
 #~ In this example a researcher measured the latency of birds to return to their
 #~ nest after a disturbance, in relation to some measure of their exploratory 
-#~ behaviour. Although the regression line looks very flat, the relationship 
-#~ was said to be highly significant. A look into the Methods revealed that the
-#~ latency was modeled as a count of minutes, assuming a Poisson error 
-#~ distribution.
+#~ behaviour (i.e. a measure of how they behave in some standardized test where 
+#~ they explore a new environment). Although the regression line looks very 
+#~ flat, the relationship was said to be highly significant. A look into the 
+#~ Methods revealed that the latency was modeled as a count of minutes, assuming 
+#~ a Poisson error distribution.
 
 mod_latency1 <- glm (Latency_min ~ Exploration_score, data = d8, family = "poisson")
 summary(mod_latency1)
