@@ -450,8 +450,6 @@ tail(ped)
 #~ data table 
 
 ped_mm <- pedigree(sire = as.character(ped$MID), dam  = as.character(ped$FID), label = as.character(ped$Animal))
-FPed <- inbreeding(ped_mm)
-ped$FPed <- FPed
 all.data <- merge(d7, ped, by.x="Animal", by.y="Animal")
 all.data$Animal <- factor(all.data$Animal)
 
