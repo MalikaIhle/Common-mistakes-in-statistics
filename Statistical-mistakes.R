@@ -239,7 +239,6 @@ summary(model4)
 
 
 d45 <- read.table("dataFig45.txt", sep='\t', header=T)
-View(d45)
 
 #~ Female ID and Trt are numeric values that should be considered as factors
 d45$Female_ID <-as.factor(d45$Female_ID)
@@ -254,6 +253,8 @@ ggplot(data=d45, aes(x=Female_ID, y=Egg_mass, group=Trt, colour=Trt))  +
         axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")) +
   theme(axis.text = element_text (size=10), axis.title = element_text (face="bold",size=13)) + 
   scale_colour_manual(values = c("1" = "blue","2" = "orange"),labels=c("Reduced", "Enhanced"), name="Treatment")
+
+View(d45)
 
 #~ The plot illustrates that we have 5 eggs per female and two times 6 females
 #~ belonging to the two treatment groups.
@@ -490,7 +491,7 @@ h2.mod
 #~ 63.6% is residual variance.
 
 #~ Lesson 2D: Non-independence of data points may sometimes be hard to account 
-#~ for completely.Besides relatedness of individuals (causing non-independence 
+#~ for completely. Besides relatedness of individuals (causing non-independence 
 #~ in heritable traits), there is often spatial or temporal autocorrelation in 
 #~ the data. All these dependencies can be modeled, but this is challenging and 
 #~ rarely done perfectly. Note that, in the wild, we normally would not have
@@ -551,6 +552,8 @@ summary(mod_latency1s)
 #~ significant results!
 #~ But let's try to be realistic. We log-transform the dependent variable to 
 #~ approach a normal distribution and then use a model with Gaussian errors.
+
+hist(log(d8$Latency_min))
 
 mod_latency2 <- glm (log(Latency_min) ~ Exploration_score, data = d8, family = "gaussian") 
 summary(mod_latency2)
