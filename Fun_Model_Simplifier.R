@@ -73,7 +73,7 @@ Model_Simplifier = function ( N_OBS= 30, N_MAIN_EFFECTS=6, MYSEED = 7) {
     myP = extract_Pval(mymod)
     
     # if no non-significant effects or no effect left, stop here and return the model 
-    if (  nrow( myP[ sigYN == 0 ]) == 0)  { print ( summary( mymod)); cat( paste("Your simplist best-fit model is:",   MODFUN) ); break()}
+    if (  nrow( myP[ sigYN == 0 ]) == 0)  { print ( summary( mymod)); cat( paste("Your simplest best-fit model is:",   MODFUN) ); break()}
     
     # if there are non-significant effects  
     # take out the most non-significant effect, one at a time 
